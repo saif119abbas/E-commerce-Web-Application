@@ -54,7 +54,5 @@ This project is licensed under the MIT License.
 
 **Saif Abbas**  
 Computer Engineering Graduate | AI Engineer  
-[LinkedIn](https://www.linkedin.com/) • [GitHub](https://github.com/)  
-
 ---
 
