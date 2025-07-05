@@ -7,7 +7,7 @@ processing via Stripe, full-text product search using Elasticsearch, and perform
 
 ## Features
 
--  Full-stack architecture with **ASP.NET Core MVC** and **MongoDB**
+-  **Backend architecture** using **ASP.NET Core MVC** and **MongoDB**
 -  Secure authentication using **Microsoft Identity** and **JWT**
 -  **Repository-Service pattern** for clean separation of concerns
 -  **Stripe integration** with Webhooks for secure and real-time payment tracking
@@ -36,7 +36,6 @@ processing via Stripe, full-text product search using Elasticsearch, and perform
 
 - **Backend:** ASP.NET Core MVC, C#
 - **Database:** MongoDB
-- **Frontend:** HTML, CSS, JavaScript, Bootstrap, React
 - **Authentication:** Microsoft Identity, JWT
 - **Payments:** Stripe API with Webhooks
 - **Search:** Elasticsearch
