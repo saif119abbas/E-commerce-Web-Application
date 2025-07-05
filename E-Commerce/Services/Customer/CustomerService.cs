@@ -289,7 +289,9 @@ namespace E_Commerce.Services
                     UserId=parsedUserId,
                     Cart=cart,
                     ReservationIds= newReservations.Select(r => r.Id).ToList(),
-                    ProductsMap = productMap
+                    ProductsMap = productMap,
+                    EnrichedItems=enrichedItems
+              
                 };
                 var contextResult = await _paymentContextRepository.CreateAsync(context, session);
                 if (contextResult == null || contextResult.Data == null || !contextResult.Success)
@@ -479,6 +481,7 @@ namespace E_Commerce.Services
             await Task.WhenAll(reservationTask, productTask);
             var reservationsResult = await reservationTask;
             var productsResult = await productTask;
+            
 
             if (!reservationsResult.Success || reservationsResult.Data == null)
             {
