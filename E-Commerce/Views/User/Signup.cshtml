@@ -1,0 +1,49 @@
+﻿@model E_Commerce.Models.SignupViewModel
+
+@{
+    ViewData["Title"] = "View";
+}
+<h1>View</h1>
+<h4>UserModel</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Signup">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="User.Username" class="control-label"></label>
+                <input asp-for="User.Username" class="form-control" />
+                <span asp-validation-for="User.Username" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="User.Password" class="control-label"></label>
+                <input asp-for="User.Password" class="form-control" type="password" />
+                <span asp-validation-for="User.Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="User.Email" class="control-label"></label>
+                <input asp-for="User.Email" class="form-control" />
+                <span asp-validation-for="User.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="User.Role" class="control-label"></label>
+                <select asp-for="User.Role" asp-items="Model.Roles" class="form-control">
+                    <option value="">-- Select Role --</option>
+                </select>
+                <span asp-validation-for="User.Role" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Signup" class="btn btn-primary" />
+            </div>
+        </form>
+
+    </div>
+</div>
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,52 @@
+﻿@model E_Commerce.Models.CartViewModel
+
+@{
+    ViewData["Title"] = "Your Cart";
+}
+
+<h2>Your Shopping Cart</h2>
+
+@if (!Model.Items.Any())
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td>@item.Price.ToString("C")</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Total.ToString("C")</td>
+                    <td>
+                        <form asp-action="RemoveFromCart" method="post" asp-route-productId="@item.ProductId">
+                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                <td colspan="2">@Model.TotalPrice.ToString("C")</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <form asp-action="Checkout" asp-controller="Customer" method="post">
+        <button class="btn btn-success" type="submit" >Proceed to Checkout</button>
+    </form>
+}
