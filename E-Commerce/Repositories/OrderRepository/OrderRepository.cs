@@ -44,7 +44,7 @@ namespace E_Commerce.Repositories
             }
         }
 
-        public async Task<OperationResult<List<Order>>> GetOrdersAsync(Guid userId, IClientSessionHandle session = null)
+        public async Task<OperationResult<List<Order>>> GetOrdersAsync(Guid userId)
         {
             try
             {

@@ -20,8 +20,11 @@ namespace E_Commerce.Models
 
         [BsonElement("customer_id")]
         public Guid CustomerId { get; set; }
+        [BsonElement("items_number")]
+        [BsonRequired]
+        public int ItemsNumber { get; set; }
 
-        [BsonElement("items")]
-        public List<OrderItem> Items { get; set; } = new List<OrderItem>();
+        /* [BsonElement("items")]
+         public List<OrderItem> Items { get; set; } = new List<OrderItem>();*/
     }
 }

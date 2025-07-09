@@ -23,6 +23,7 @@ namespace E_Commerce.Services
         private readonly IProductReservationRepository _productReservationRepository;
         private readonly IPaymentRepository _paymentRepository;
         private readonly IPaymentContextRepository _paymentContextRepository;
+        private readonly IOrderItemRepository _orderItemRepository;
         private readonly IElasticsearchService<ProductItem> _elasticsearchService;
         private readonly IStripePaymentService _stripePaymentService;
         private readonly IUnitOfWork _unitOfWork;
@@ -36,6 +37,7 @@ namespace E_Commerce.Services
                                 IProductReservationRepository productReservationRepository,
                                 IPaymentRepository paymentRepository,
                                 IPaymentContextRepository paymentContextRepository,
+                                IOrderItemRepository orderItemRepository,
                                 IElasticsearchService<ProductItem> elasticsearchService,
                                 IStripePaymentService stripePaymentService,
                                 IUnitOfWork unitOfWork,
@@ -51,6 +53,7 @@ namespace E_Commerce.Services
             _productReservationRepository = productReservationRepository;
             _paymentRepository = paymentRepository;
             _paymentContextRepository = paymentContextRepository;
+            _orderItemRepository = orderItemRepository;
             _elasticsearchService = elasticsearchService;
             _stripePaymentService = stripePaymentService;
             _cartRepository = cartRepository;
@@ -597,7 +600,7 @@ namespace E_Commerce.Services
 
                 // 4. Create order
                 var orderResult = await CreateOrder(userId, enrichedItems, productMap, session);
-                if (!orderResult.Success)
+                if (orderResult==null || orderResult.Data==null ||!orderResult.Success)
                 {
                     await _unitOfWork.AbortAsync();
                     var error = updateResult.Errors != null
@@ -606,7 +609,17 @@ namespace E_Commerce.Services
                     return OperationResult<CheckoutSessionResponse>.FailureResult(
                        orderResult?.StatusCode ?? 500,error);
                 }
-                  
+                var addOrderItemsResult= await AddOrderItems(userId,orderResult.Data, enrichedItems,productMap, session);
+                if (addOrderItemsResult==null || addOrderItemsResult.Data==null ||!addOrderItemsResult.Success)
+                {
+                    await _unitOfWork.AbortAsync();
+                    var error = updateResult.Errors != null
+                       ? string.Join(", ", updateResult.Errors)
+                       : "Failed to create order";
+                    return OperationResult<CheckoutSessionResponse>.FailureResult(
+                       orderResult?.StatusCode ?? 500, error);
+                }
+
                 // 5. Clear cart
                 cart.Items = new List<CartItem>();
                 var cartResult = await _cartRepository.UpdateCartAsync(cart, session);
@@ -714,30 +727,43 @@ namespace E_Commerce.Services
             Dictionary<string, Product> productMap,
             IClientSessionHandle session)
         {
-            
-            var items = enrichedItems.Select(item =>
-            {
-                productMap.TryGetValue(item.ProductId.ToString(), out var product);
-                return new OrderItem
-                {
-                    ProductId = item.ProductId,
-                    ProductName = item!.ProductName!,
-                    Quantity = item.Quantity,
-                    Price = item.Price,
-                    VendorId = product!.VendorId
-                };
-            }).ToList();
-            var totalCost = items.Select(i => i.Price*i.Quantity).Sum();
+            var totalCost = enrichedItems.Select(i => i.Price * i.Quantity).Sum();
             var order = new Order
             {
                 Id = Guid.NewGuid(),
                 OrderDate = DateTime.Now,
                 CustomerId = userId,
-                Items = items,
                 TotalCost = totalCost,
+                ItemsNumber= enrichedItems.Count,
             };
+            var addOrderResult= await _orderRepository.CreateOrderAsync(order, session);
+            return addOrderResult;
+        }
+        private  async Task<OperationResult<List<OrderItem>>> AddOrderItems(
+            Guid userId,
+            Order order,
+            List<CartItemViewModel> enrichedItems,
+            Dictionary<string, Product> productMap,
+            IClientSessionHandle session)
+        {
+            var items = enrichedItems.Select(item =>
+            {
+                productMap.TryGetValue(item.ProductId.ToString(), out var product);
+                return new OrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = order.Id,
+                    ProductId = item.ProductId,
+                    VendorId = product!.VendorId,
+                    CustomerId=userId,
+                    ProductName = item!.ProductName!,
+                    Quantity = item.Quantity,
+                    Price = item.Price,
+                };
+            }).ToList();
+            return await _orderItemRepository.AddBulkAsync(items, session);
 
-            return await _orderRepository.CreateOrderAsync(order, session);
+
         }
         private (bool isValid, List<string> errors, List<CartItemViewModel> enrichedItems)
           ValidateCartItems(List<CartItem> items, Dictionary<string, Product> productMap,
@@ -821,6 +847,33 @@ namespace E_Commerce.Services
                 return OperationResult<List<Order>>.FailureResult(500, ex.Message);
             }
            
+        }
+
+        public async Task<OperationResult<List<OrderItem>>> GetOrderItems(string orderId,string userId)
+        {
+            try
+            {
+                if (orderId == null || !Guid.TryParse(orderId, out var parsedOrderId) ||
+                    userId == null || !Guid.TryParse(userId, out var customerId))
+
+                {
+                    return OperationResult<List<OrderItem>>.FailureResult(400, "Invaild customerId");
+                }
+                var getOrderItemsResult = await _orderItemRepository.GetItemsAsync(parsedOrderId, customerId);
+                if (getOrderItemsResult == null || !getOrderItemsResult.Success || getOrderItemsResult.Data == null)
+                {
+                    var error = getOrderItemsResult?.Errors != null
+                        ? string.Join(", ", getOrderItemsResult.Errors)
+                        : "Something went wrong";
+                    return OperationResult<List<OrderItem>>.FailureResult(getOrderItemsResult?.StatusCode ?? 500, error);
+                }
+                var orderItems = getOrderItemsResult.Data;
+                return OperationResult<List<OrderItem>>.SuccessResult(orderItems);
+            }
+            catch (Exception ex)
+            {
+                return OperationResult<List<OrderItem>>.FailureResult(500, ex.Message);
+            }
         }
     }
 }

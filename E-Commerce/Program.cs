@@ -78,7 +78,12 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
 builder.Services.Configure<ElasticSettings>(builder.Configuration.GetSection("ElasticsearchSetup"));
 
-
+/*builder.Services.AddStackExchangeRedisCache(redisOptions =>
+{
+    string conenction = builder.Configuration.GetConnectionString("Redis")!;
+    redisOptions.Configuration = conenction;
+});*/
+builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
 {
@@ -108,8 +113,12 @@ builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ICartRepository, CartRepositroy>();
 builder.Services.AddScoped<IProductReservationRepository, ProductReservationRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IPaymentContextRepository, PaymentContextRepository>();
+builder.Services.AddScoped(typeof(IMemberRepository<>), typeof(CachedMemberRepository<>));
+
+
 builder.Services.AddScoped<IStripePaymentService, StripePaymentService>();
 
 builder.Services.AddScoped<IUnitOfWork,MongoUnitOfWork>();

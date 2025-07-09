@@ -3,7 +3,6 @@ using E_Commerce.Repositories;
 using E_Commerce.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Caching.Memory;
-using Order = E_Commerce.Models.Order;
 using Product = E_Commerce.Models.Product;
 using ProductDTO = E_Commerce.Models.ProductDTO;
 namespace E_Commerce.Services
@@ -17,7 +16,8 @@ namespace E_Commerce.Services
         private readonly IElasticsearchService<ProductItem> _elasticsearchService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<VendorService> _logger;
-        private readonly IMemoryCache _memoryCache;
+        private readonly IMemberRepository<ProductDTO> _productCache;
+        private readonly IMemberRepository<CategoryDTO> _categoryCache;
 
 
         public VendorService(
@@ -26,7 +26,8 @@ namespace E_Commerce.Services
             ICategoryRepository categoryRepository,
             IElasticsearchService<ProductItem> elasticsearchService,
             IUnitOfWork unitOfWork,
-            IMemoryCache memoryCache,
+            IMemberRepository<ProductDTO> productCache,
+            IMemberRepository<CategoryDTO> categoryCache,
             ILogger<VendorService> logger)
         {
             _productRepository = productRepository;
@@ -34,7 +35,8 @@ namespace E_Commerce.Services
             _categoryRepository = categoryRepository;
             _elasticsearchService = elasticsearchService;
             _unitOfWork = unitOfWork;
-            _memoryCache = memoryCache;
+            _productCache = productCache;
+            _categoryCache = categoryCache;
             _logger = logger;
         }
         public async Task<OperationResult<List<ProductDTO>>> GetVendorProductsAsync(string vendorId, bool forceRefresh = false)
@@ -42,7 +44,7 @@ namespace E_Commerce.Services
            try
             {
                 var cacheKey = $"vendor_products_{vendorId}";
-                var cachedProducts = getCacheData<ProductDTO>(cacheKey);
+                var cachedProducts = await _productCache.GetMemberListAsync(cacheKey);
                 if (!forceRefresh && cachedProducts.Count>0)
                 {
                     return OperationResult<List<ProductDTO>>.SuccessResult(cachedProducts);
@@ -69,11 +71,9 @@ namespace E_Commerce.Services
                     CategoryName = p.CategoryName
                 }).ToList();
 
-                var cacheOptions = new MemoryCacheEntryOptions()
-                .SetSlidingExpiration(TimeSpan.FromMinutes(59))
-                .SetAbsoluteExpiration(TimeSpan.FromHours(23));
 
-                _memoryCache.Set(cacheKey, products, cacheOptions);
+
+                await _productCache.AddMemberListAsync(cacheKey, products);
                 return OperationResult<List<ProductDTO>>.SuccessResult(products);
             }
             catch (Exception ex)
@@ -190,12 +190,11 @@ namespace E_Commerce.Services
                     return OperationResult<ProductDTO>.FailureResult(elasticSearchResult?.StatusCode ?? 500, error);
                 }
 
-                var cacheOptions = new MemoryCacheEntryOptions()
-                   .SetSlidingExpiration(TimeSpan.FromMinutes(59))
-                .SetAbsoluteExpiration(TimeSpan.FromHours(23));
+      
 
                 var cacheKey = $"vendor_products_{vendorId}";
-                var products=getCacheData<ProductDTO>(cacheKey);
+
+                var products = await _productCache.GetMemberListAsync(cacheKey);
                 var result = new ProductDTO
                 {
                     Id = newProduct.Id,
@@ -206,7 +205,7 @@ namespace E_Commerce.Services
                 };
                 products.Add(result);
                 
-                _memoryCache.Set(cacheKey, products, cacheOptions);
+                await _productCache.UpdateMemberListAsync(cacheKey, products);
              
 
                 return OperationResult<ProductDTO>.SuccessResult(new ProductDTO
@@ -229,7 +228,7 @@ namespace E_Commerce.Services
             try
             {
                 var cacheKey = "categories";
-                var cacheCategories = getCacheData<CategoryDTO>(cacheKey);
+                var cacheCategories = await _categoryCache.GetMemberListAsync(cacheKey);
                 if (cacheCategories.Count >0)
                 {
                     return OperationResult<List<CategoryDTO>>.SuccessResult(cacheCategories);
@@ -256,7 +255,7 @@ namespace E_Commerce.Services
                 .SetSlidingExpiration(TimeSpan.FromMinutes(59))
                 .SetAbsoluteExpiration(TimeSpan.FromHours(23));
 
-                _memoryCache.Set(cacheKey, categories, cacheOptions);
+               await _categoryCache.AddMemberListAsync(cacheKey, categories);
                 return OperationResult<List<CategoryDTO>>.SuccessResult(categories);
             }
             catch (Exception ex)
@@ -276,7 +275,7 @@ namespace E_Commerce.Services
 
 
                 var cacheKey = $"vendor_products_{vendorId}";
-                var cachedProducts=getCacheData<ProductDTO>(cacheKey);
+                var cachedProducts=await _productCache.GetMemberListAsync(cacheKey);
                 if(cachedProducts.Count>0)
                 {
                     var productCached = cachedProducts.FirstOrDefault(prod => prod.Id == parsedProductId);
@@ -318,7 +317,7 @@ namespace E_Commerce.Services
 
             
                 
-                var categories = getCacheData<CategoryDTO>("categories");
+                var categories = await _categoryCache.GetMemberListAsync("categories");
                 if(categories.Count==0)
                 {
                     var getCategoriesResult = await _categoryRepository.GetAllCategoriesAsync();
@@ -394,20 +393,18 @@ namespace E_Commerce.Services
                     CategoryName = data.CategoryName,
 
                 };
-                var cacheOptions = new MemoryCacheEntryOptions()
-                   .SetSlidingExpiration(TimeSpan.FromMinutes(59))
-                .SetAbsoluteExpiration(TimeSpan.FromHours(23));
+               
 
                 var cacheKey = $"vendor_products_{vendorId}";
-                var products = getCacheData<ProductDTO>(cacheKey);
+                var products = await _productCache.GetMemberListAsync(cacheKey);
                 var index = products.FindIndex(product => product.Id == parsedProductId);
                 if (index != -1)
                 {
-                     products[index] = result;
-                    _memoryCache.Set(cacheKey, products, cacheOptions);
+                    products[index] = result;
+                    await _productCache.UpdateMemberListAsync(cacheKey, products);
                 }
-         
-                _memoryCache.Set("categories", categories, cacheOptions);
+
+                await _categoryCache.UpdateMemberListAsync("categories", categories);
                 return OperationResult<ProductDTO>.SuccessResult(result);
 
             }
@@ -429,10 +426,12 @@ namespace E_Commerce.Services
                     !Guid.TryParse(vendorId, out Guid parsedVendorId))
                     return OperationResult<ProductDTO>.FailureResult(400, "Invalid parameters");
                  var cacheKey = $"vendor_products_{vendorId}";
-                 var product = getCacheData<ProductDTO>(cacheKey).Find(
-                     p=>p.Id==parsedProductId);
-               
-                if(product == null)
+                var products = await _productCache.GetMemberListAsync(cacheKey);
+                var product= products.Find(
+                     p => p.Id == parsedProductId);
+
+
+                if (product == null)
                 {
                     var getProductResult=await _productRepository.GetProductAsync(parsedProductId);
                     if (getProductResult == null || !getProductResult.Success || getProductResult.Data == null)
@@ -459,9 +458,9 @@ namespace E_Commerce.Services
                         CategoryName = data.CategoryName,
                     };
                 }
-                var category = getCacheData<CategoryDTO>("categories").Find(
-                    c=>c.Name==product.CategoryName);
-                if(category==null)
+                var categories = await _categoryCache.GetMemberListAsync("categories");
+                var category=categories.Find(c => c.Name == product.CategoryName);
+                if (category==null)
                 {
                     var getCategoryResult= await _categoryRepository.GetCategoryByNameAsync(product.CategoryName!);
                     if (getCategoryResult == null)
@@ -509,20 +508,16 @@ namespace E_Commerce.Services
                 }
 
                 await _unitOfWork.CommitAsync();
-                var products = getCacheData<ProductDTO>(cacheKey);
+                var products2 = await _productCache.GetMemberListAsync(cacheKey);
 
-                if (products != null)
+                if (products2 != null)
                 {
-                    var index = products.FindIndex(p => p.Id == parsedProductId);
+                    var index = products2.FindIndex(p => p.Id == parsedProductId);
 
                     if (index != -1)
                     {
-                        products.RemoveAt(index);
-
-                        var cacheOptions = new MemoryCacheEntryOptions()
-                            .SetSlidingExpiration(TimeSpan.FromMinutes(59))
-                            .SetAbsoluteExpiration(TimeSpan.FromHours(23));
-                        _memoryCache.Set(cacheKey, products, cacheOptions);
+                        products2.RemoveAt(index);
+                        await _productCache.UpdateMemberListAsync(cacheKey, products2);
                     }
                 }
                 
@@ -537,9 +532,7 @@ namespace E_Commerce.Services
                 return OperationResult<ProductDTO>.FailureResult(500, ex.Message);
             }
         }
-        private List<T> getCacheData<T>(string cacheKey) =>
-            _memoryCache.TryGetValue(cacheKey, out List<T> cachedData) ?
-            cachedData.ToList() : new List<T>();
+  
 
 
     }
