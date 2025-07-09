@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Your Orders";
 
+
 }
 
 <div class="container mt-4">
@@ -30,7 +31,7 @@
                         <th>@Html.DisplayNameFor(model => model[0].Id)</th>
                         <th>@Html.DisplayNameFor(model => model[0].OrderDate)</th>
                         <th>@Html.DisplayNameFor(model => model[0].TotalCost)</th>
-                        <th>@Html.DisplayNameFor(model => model[0].Items.Count)</th>
+                        <th>@Html.DisplayNameFor(model => model[0].ItemsNumber)</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -41,9 +42,9 @@
                             <td>@Html.DisplayFor(modelItem => order.Id)</td>
                             <td>@Html.DisplayFor(modelItem => order.OrderDate)</td>
                             <td>@Html.DisplayFor(modelItem => order.TotalCost)</td>
-                            <td>@Html.DisplayFor(modelItem => order.Items.Count)</td>
+                            <td>@Html.DisplayFor(modelItem => order.ItemsNumber)</td>
                             <td>
-                                <form asp-action="ShowOrderItems" asp-controller="Customer" asp-route-orderId="@order.Id" method="post">
+                                        <form asp-action="OrderDetails" asp-controller="Customer" asp-route-orderId="@order.Id" method="post">
                                     <div class="btn-group" role="group">
                                         <button type="submit" class="btn btn-sm btn-warning">Show Items</button>
                                     </div>
@@ -55,7 +56,11 @@
             </table>
         </div>
     }
-</div>
+
+</div
+ <div>
+        <a asp-action="Index" asp-controller="Customer">Back to Home</a>
+    </div>>
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");

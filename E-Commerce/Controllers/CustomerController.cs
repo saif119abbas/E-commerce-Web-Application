@@ -1,11 +1,6 @@
-﻿using E_Commerce.Models;
-using E_Commerce.Services;
+﻿using E_Commerce.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Nest;
-using Stripe.Checkout;
-using Stripe.Climate;
-
 namespace E_Commerce.Controllers
 {
     [Authorize(Roles = "customer")]
@@ -146,33 +141,42 @@ namespace E_Commerce.Controllers
             return new StatusCodeResult(303);
 
         }
-        public  async Task<ActionResult> Orders()
+        public async Task<ActionResult> Orders()
         {
             if (UserId == null)
             {
-                return RedirectToAction("Index", "Error", new
-                {
-                    code = 401,
-                    message = "UnAuthorize user"
-                });
+                return RedirectToAction("Index", "Error", new { code = 401, message = "UnAuthorize user" });
             }
-            var result = await _customerService.GetOrders(UserId);
-            if (result == null || result.Data == null || !result.Success)
-            {
-                var error = result?.Errors != null
-                       ? string.Join(", ", result.Errors)
-                       : "Something went wrong";
-                return RedirectToAction("Index", "Error", new
-                {
-                    code = result?.StatusCode ?? 500,
-                    message = error
-                });
-            }
-            return View();
 
+            var result = await _customerService.GetOrders(UserId);
+            if (!result.Success || result.Data == null)
+            {
+                var error = result?.Errors != null ? string.Join(", ", result.Errors) : "Something went wrong";
+                return RedirectToAction("Index", "Error", new { code = result?.StatusCode ?? 500, message = error });
+            }
+            return View(result.Data);
         }
- 
+
+        public async Task<ActionResult> OrderDetails(string orderId)
+        {
+            if (UserId == null)
+            {
+                return RedirectToAction("Index", "Error", new { code = 401, message = "UnAuthorize user" });
+            }
+            var result = await _customerService.GetOrderItems(orderId, UserId);
+            if (!result.Success || result.Data == null)
+            {
+                var error = result?.Errors != null ? string.Join(", ", result.Errors) : "Something went wrong";
+                return RedirectToAction("Index", "Error", new { code = result?.StatusCode ?? 500, message = error });
+            }
+            var items=result.Data;
+            ViewBag.OrderId = orderId;
+            return View(items);
+        }
+
+
 
     }
+
 
 }

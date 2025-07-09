@@ -14,5 +14,6 @@ namespace E_Commerce.Services
         Task<OperationResult<bool>> HandlePaymentFailureAsync(Session session);
         Task<OperationResult<List<ProductItem>>> SearchAsync(string searchQuery);
         Task<OperationResult<List<Order>>> GetOrders(string customerId);
+        Task<OperationResult<List<OrderItem>>> GetOrderItems(string orderId, string userId);
     }
 }

@@ -199,7 +199,6 @@ namespace E_Commerce.Repositories
                         return OperationResult<List<ProductReservation>>.FailureResult(500, $"Unexpected error: {ex.Message}");
                 }
             }
-            throw new NotImplementedException();
         }
     }
 }
