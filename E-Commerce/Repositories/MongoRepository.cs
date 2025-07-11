@@ -1,9 +1,10 @@
 ﻿using E_Commerce.Repositories;
 using MongoDB.Driver;
 
-public abstract class MongoRepository<T> where T : class
+
+public abstract class MongoRepository<TEntity> where TEntity : class 
 {
-    protected readonly IMongoCollection<T> _collection;
+    protected readonly IMongoCollection<TEntity> _collection;
     protected readonly IUnitOfWork _unitOfWork;
 
     protected MongoRepository(
@@ -11,7 +12,7 @@ public abstract class MongoRepository<T> where T : class
         IUnitOfWork unitOfWork,
         string collectionName)
     {
-        _collection = database.GetCollection<T>(collectionName);
+        _collection = database.GetCollection<TEntity>(collectionName);
         _unitOfWork = unitOfWork;
     }
 
